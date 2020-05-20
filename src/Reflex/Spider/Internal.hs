@@ -46,7 +46,8 @@ import Control.Monad.Fail (MonadFail)
 import qualified Control.Monad.Fail as MonadFail
 import Data.Align
 import Data.Coerce
-import Data.Dependent.Map (DMap, DSum (..))
+import Data.Dependent.Map (DMap)
+import Data.Dependent.Sum (DSum (..))
 import qualified Data.Dependent.Map as DMap
 import Data.FastMutableIntMap (FastMutableIntMap, PatchIntMap (..))
 import qualified Data.FastMutableIntMap as FastMutableIntMap
@@ -2774,7 +2775,7 @@ instance HasSpiderTimeline x => R.Reflex (SpiderTimeline x) where
   fanG e = R.EventSelectorG $ SpiderEvent . selectG (fanG (unSpiderEvent e))
   {-# INLINABLE mergeG #-}
   mergeG
-    :: forall (k :: k2 -> *) q (v :: k2 -> *). GCompare k
+    :: forall k q v. GCompare k
     => (forall a. q a -> R.Event (SpiderTimeline x) (v a))
     -> DMap k q
     -> R.Event (SpiderTimeline x) (DMap k v)
