@@ -30,7 +30,8 @@ module Reflex.Adjustable.Class
 
 import Control.Monad.Identity
 import Control.Monad.Reader
-import Data.Dependent.Map (DMap, GCompare (..))
+import Data.Dependent.Map (DMap)
+import Data.GADT.Compare (GCompare (..))
 import qualified Data.Dependent.Map as DMap
 import Data.Functor.Constant
 import Data.Functor.Misc
@@ -39,7 +40,7 @@ import qualified Data.IntMap.Strict as IntMap
 import Data.Map (Map)
 
 import Reflex.Class
-import Reflex.Patch.DMapWithMove
+import Data.Patch.DMapWithMove
 
 -- | A 'Monad' that supports adjustment over time.  After an action has been
 -- run, if the given events fire, it will adjust itself so that its net effect

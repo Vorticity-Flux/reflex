@@ -16,6 +16,7 @@ module Reflex.Query.Base
   , mapQueryResult
   , dynWithQueryT
   , withQueryT
+  , mapQueryT
   ) where
 
 import Control.Applicative (liftA2)
@@ -26,7 +27,9 @@ import Control.Monad.Reader
 import Control.Monad.Ref
 import Control.Monad.State.Strict
 import Data.Align
-import Data.Dependent.Map (DMap, DSum (..))
+import Data.Dependent.Map (DMap)
+import Data.Dependent.Sum (DSum (..))
+import Data.GADT.Compare (GCompare)
 import qualified Data.Dependent.Map as DMap
 import Data.Foldable
 import Data.Functor.Compose
@@ -46,7 +49,7 @@ import Reflex.DynamicWriter.Class
 import Reflex.EventWriter.Base
 import Reflex.EventWriter.Class
 import Reflex.Host.Class
-import qualified Reflex.Patch.MapWithMove as MapWithMove
+import qualified Data.Patch.MapWithMove as MapWithMove
 import Reflex.PerformEvent.Class
 import Reflex.PostBuild.Class
 import Reflex.Query.Class
@@ -134,7 +137,7 @@ instance (Reflex t, MonadFix m, Group q, Additive q, Query q, Eq q, MonadHold t 
     tellQueryIncremental $ unsafeBuildIncremental (fold <$> mapM sampleBs liftedBs0) qpatch
     return (liftedResult0, liftedResult')
 
-  traverseDMapWithKeyWithAdjust :: forall (k :: * -> *) v v'. (DMap.GCompare k) => (forall a. k a -> v a -> QueryT t q m (v' a)) -> DMap k v -> Event t (PatchDMap k v) -> QueryT t q m (DMap k v', Event t (PatchDMap k v'))
+  traverseDMapWithKeyWithAdjust :: forall (k :: * -> *) v v'. (GCompare k) => (forall a. k a -> v a -> QueryT t q m (v' a)) -> DMap k v -> Event t (PatchDMap k v) -> QueryT t q m (DMap k v', Event t (PatchDMap k v'))
   traverseDMapWithKeyWithAdjust f dm0 dm' = do
     let f' :: forall a. k a -> v a -> EventWriterT t q (ReaderT (Dynamic t (QueryResult q)) m) (Compose (QueryTLoweredResult t q) v' a)
         f' k v = fmap (Compose . QueryTLoweredResult) $ flip runStateT [] $ unQueryT $ f k v
@@ -179,7 +182,7 @@ instance (Reflex t, MonadFix m, Group q, Additive q, Query q, Eq q, MonadHold t 
     tellQueryIncremental $ unsafeBuildIncremental (fold <$> mapM sampleBs liftedBs0) qpatch
     return (liftedResult0, liftedResult')
 
-  traverseDMapWithKeyWithAdjustWithMove :: forall (k :: * -> *) v v'. (DMap.GCompare k) => (forall a. k a -> v a -> QueryT t q m (v' a)) -> DMap k v -> Event t (PatchDMapWithMove k v) -> QueryT t q m (DMap k v', Event t (PatchDMapWithMove k v'))
+  traverseDMapWithKeyWithAdjustWithMove :: forall (k :: * -> *) v v'. (GCompare k) => (forall a. k a -> v a -> QueryT t q m (v' a)) -> DMap k v -> Event t (PatchDMapWithMove k v) -> QueryT t q m (DMap k v', Event t (PatchDMapWithMove k v'))
   traverseDMapWithKeyWithAdjustWithMove f dm0 dm' = do
     let f' :: forall a. k a -> v a -> EventWriterT t q (ReaderT (Dynamic t (QueryResult q)) m) (Compose (QueryTLoweredResult t q) v' a)
         f' k v = fmap (Compose . QueryTLoweredResult) $ flip runStateT [] $ unQueryT $ f k v
@@ -286,6 +289,10 @@ withQueryT f a = do
     (fmap (mapQuery f) (sample (currentIncremental q)))
     (fmapCheap (AdditivePatch . mapQuery f . unAdditivePatch) $ updatedIncremental q)
   return result
+
+-- | Maps a function over a 'QueryT' that can change the underlying monad
+mapQueryT :: (forall b. m b -> n b) -> QueryT t q m a -> QueryT t q n a
+mapQueryT f (QueryT a) = QueryT $ mapStateT (mapEventWriterT (mapReaderT f)) a
 
 -- | dynWithQueryT's (Dynamic t QueryMorphism) argument needs to be a group homomorphism at all times in order to behave correctly
 dynWithQueryT :: (MonadFix m, PostBuild t m, Group q, Additive q, Group q', Additive q', Query q')
